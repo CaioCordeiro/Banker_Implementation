@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdarg.h>
+
 #define MAX_SLEEP 10 // numero maximo de ciclos dormindo
 #define MAX_RELEASE 2 // tempo máximo que o cliente vai levar para resolver o recurso
 
@@ -10,6 +12,7 @@
 #define MEDIUM 2
 #define HIGH 3
 #define DEBUG_LEVEL HIGH
+
 
 typedef struct{
     int num_ciclos_req; // quantidade de tempo para resolver um recurso
@@ -29,17 +32,17 @@ typedef struct{
 
 // void release_resources(int customer_num, int release[]);
 
+int debugHigh(const char *format, va_list args);
+int debugMedium(const char *format, va_list args);
+int debugLow(const char *format, va_list args);
+
 
 int main(int argc, char *argv[]){
     srand(time(NULL));
-    float limiter = (float)RAND_MAX
     //START DEBUG LEVEL
-    if(DEBUG_LEVEL>=HIGH)
-        printf("\nDEBUG HIGH => ATIVO\n");
-    if(DEBUG_LEVEL>=MEDIUM)
-        printf("\nDEBUG MEDIO => ATIVO\n");
-    if(DEBUG_LEVEL>=LOW)
-        printf("\nDEBUG LOW => ATIVO\n");
+    debugHigh("\nDEBUG HIGH => ATIVO\n");
+    debugMedium("\nDEBUG MEDIO => ATIVO\n");
+    debugLow("\nDEBUG LOW => ATIVO\n");
     //END DEBUG LEVEL
     
     //START DECLARATIONS
@@ -53,21 +56,20 @@ int main(int argc, char *argv[]){
     //START INITIATION OF BANKER STRUCTURE
     banker.max_values = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
     banker.live_values = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
-    if(DEBUG_LEVEL>=HIGH)
-        printf("\nTIME_OF_EXECUTION => %d\n",TIME_OF_EXECUTION);
+    debugMedium("\nTIME_OF_EXECUTION => %d\n",TIME_OF_EXECUTION);
+    
     for(int i=1;i<argc-1;i++){
         banker.max_values[i-1]= atoi(argv[i]);
         banker.live_values[i-1]= atoi(argv[i]);
-        if(DEBUG_LEVEL>=HIGH)
-            printf("\nBanker array position => %d->%d \n",banker.max_values[i-1],i);
+        debugHigh("\nBanker array position => %d->%d \n",banker.max_values[i-1],i);
     }
     //END INITIATION OF BANKER STRUCTURE
     //START READ FILE
     
     scanf("%d",&num_threads);//pegar numeros de threads
-    if(DEBUG_LEVEL>=HIGH)
-        printf("num_threads => %d\n",num_threads );    
+    debugMedium("num_threads => %d\n",num_threads );    
     Cliente *client_list= malloc(sizeof(Cliente)*num_threads);
+    
     for(int thread = 0;thread <= num_threads;thread++){
         client_list[thread].valor_max = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
         client_list[thread].allocated = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
@@ -86,3 +88,17 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
+int debugHigh(const char *format, va_list args){
+    if(DEBUG_LEVEL>=HIGH)
+        printf(format, args);
+}
+
+int debugMedium(const char *format, va_list args){
+    if(DEBUG_LEVEL>=MEDIUM)
+        printf(format, args);
+}
+
+int debugLow(const char *format, va_list args){
+    if(DEBUG_LEVEL>=LOW)
+        printf(format, args);
+}
