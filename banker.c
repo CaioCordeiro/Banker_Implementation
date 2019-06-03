@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
     const int TIME_OF_EXECUTION = atoi(argv[argc-1]);
     const int NUMBER_OF_RESOURCES =(argc-2);
     Banker banker;
-    int lenght;
+    int num_threads;
 
     //END DECLARATIONS
 
@@ -52,25 +52,25 @@ int main(int argc, char *argv[]){
     if(DEBUG_LEVEL>=HIGH)
         printf("\nTIME_OF_EXECUTION => %d\n",TIME_OF_EXECUTION);
     for(int i=1;i<argc-1;i++){
-        banker.max_values[i]= atoi(argv[i]);
-        banker.live_values[i]= atoi(argv[i]);
+        banker.max_values[i-1]= atoi(argv[i]);
+        banker.live_values[i-1]= atoi(argv[i]);
         if(DEBUG_LEVEL>=HIGH)
-            printf("\nBanker array position => %d->%d \n",banker.max_values[i],i);
+            printf("\nBanker array position => %d->%d \n",banker.max_values[i-1],i);
     }
     //END INITIATION OF BANKER STRUCTURE
     //START READ FILE
     
-    // scanf("%d",&lenght);//pegar numeros de threads
+    scanf("%d",&num_threads);//pegar numeros de threads
     if(DEBUG_LEVEL>=HIGH)
-        printf("num_threads => %d\n",lenght );    
-    // Cliente *client_list= malloc(sizeof(Cliente)*num_threads);
-    // for(int thread = 0;thread <= num_threads;thread++){
-    //     client_list[thread].valor_max = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
-    //     client_list[thread].allocated = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
-    //     client_list[thread].needs = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
+        printf("num_threads => %d\n",num_threads );    
+    Cliente *client_list= malloc(sizeof(Cliente)*num_threads);
+    for(int thread = 0;thread <= num_threads;thread++){
+        client_list[thread].valor_max = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
+        client_list[thread].allocated = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
+        client_list[thread].needs = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
 
          
-    // }'
+    }
     
     return 0;
 }
