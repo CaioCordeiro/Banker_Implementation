@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #define MAX_SLEEP 10 // numero maximo de ciclos dormindo
 #define MAX_RELEASE 2 // tempo máximo que o cliente vai levar para resolver o recurso
 
@@ -17,6 +18,7 @@ typedef struct{
     int *allocated; // valores já alocados para o cliente
     int *needs; // valores aleatórios para se retirar do bunker 
 }Cliente;
+
 typedef struct{
     int *max_values;//valor maximos dos valores do banco
     int *live_values;// valores atuais do banco
@@ -29,6 +31,8 @@ typedef struct{
 
 
 int main(int argc, char *argv[]){
+    srand(time(NULL));
+    float limiter = (float)RAND_MAX
     //START DEBUG LEVEL
     if(DEBUG_LEVEL>=HIGH)
         printf("\nDEBUG HIGH => ATIVO\n");
@@ -68,9 +72,16 @@ int main(int argc, char *argv[]){
         client_list[thread].valor_max = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
         client_list[thread].allocated = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
         client_list[thread].needs = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
-
-         
+        client_list[thread].num_ciclos_req = rand() % MAX_SLEEP+1;
+        for(int res=0;res<NUMBER_OF_RESOURCES;res++){
+            int value;
+            value = scanf("%d",&value);
+            client_list[thread].valor_max[res]=value;
+            client_list[thread].allocated[res] =0;
+            client_list[thread].needs[res] = rand() % value+1;
+        }
     }
+
     
     return 0;
 }
