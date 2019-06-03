@@ -32,9 +32,9 @@ typedef struct{
 
 // void release_resources(int customer_num, int release[]);
 
-int debugHigh(const char *format, va_list args);
-int debugMedium(const char *format, va_list args);
-int debugLow(const char *format, va_list args);
+void debugHigh(const char *format, ...);
+void debugMedium(const char *format, ...);
+void debugLow(const char *format, ...);
 
 
 int main(int argc, char *argv[]){
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
     //START INITIATION OF BANKER STRUCTURE
     banker.max_values = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
     banker.live_values = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
-    debugMedium("\nTIME_OF_EXECUTION => %d\n",TIME_OF_EXECUTION);
+    debugMedium("\nTIME_OF_EXECUTION => %d\n", TIME_OF_EXECUTION);
     
     for(int i=1;i<argc-1;i++){
         banker.max_values[i-1]= atoi(argv[i]);
@@ -70,35 +70,47 @@ int main(int argc, char *argv[]){
     debugMedium("num_threads => %d\n",num_threads );    
     Cliente *client_list= malloc(sizeof(Cliente)*num_threads);
     
-    for(int thread = 0;thread <= num_threads;thread++){
+    for(int thread = 0; thread <= num_threads; thread++){
         client_list[thread].valor_max = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
         client_list[thread].allocated = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
         client_list[thread].needs = malloc(sizeof(int)*NUMBER_OF_RESOURCES);
         client_list[thread].num_ciclos_req = rand() % MAX_SLEEP+1;
-        for(int res=0;res<NUMBER_OF_RESOURCES;res++){
+        debugMedium("\n**** Thread Number %d****\n", thread);
+        debugMedium("num_ciclos_req => %d \n", client_list[thread].num_ciclos_req);
+        
+        for(int res=0; res<NUMBER_OF_RESOURCES; res++){
             int value;
             value = scanf("%d",&value);
             client_list[thread].valor_max[res]=value;
             client_list[thread].allocated[res] =0;
             client_list[thread].needs[res] = rand() % value+1;
+            debugHigh("Value valor_max[%d] => %d | needs[%d] => %d \n", res, client_list[thread].valor_max[res], res,client_list[thread].needs[res]);
         }
+        debugHigh("\nEnd Thread %d\n", thread);
     }
-
-    
     return 0;
 }
 
-int debugHigh(const char *format, va_list args){
+void debugHigh(const char *format, ...){
+    va_list arg;
+    va_start (arg, format);
     if(DEBUG_LEVEL>=HIGH)
-        printf(format, args);
+        vfprintf(stdout, format, arg);
+    va_end (arg);
 }
 
-int debugMedium(const char *format, va_list args){
+void debugMedium(const char *format, ...){
+    va_list arg;
+    va_start (arg, format);
     if(DEBUG_LEVEL>=MEDIUM)
-        printf(format, args);
+        vfprintf(stdout, format, arg);
+    va_end (arg);
 }
 
-int debugLow(const char *format, va_list args){
+void debugLow(const char *format, ...){
+    va_list arg;
+    va_start (arg, format);
     if(DEBUG_LEVEL>=LOW)
-        printf(format, args);
+        vfprintf(stdout, format, arg);
+    va_end (arg);
 }
