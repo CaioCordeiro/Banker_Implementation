@@ -15,6 +15,10 @@
 #define HIGH 3
 #define DEBUG_LEVEL HIGH
 
+#define DEADLOCK -1
+#define NO_RESOURCES 0
+#define RESOURCE_ALOCATED 1
+
 typedef struct
 {
     int num_ciclos_req; // quantidade de tempo para resolver um recurso
@@ -43,9 +47,10 @@ typedef struct
 void debugHigh(const char *format, ...);
 void debugMedium(const char *format, ...);
 void debugLow(const char *format, ...);
-
+int askForResource(int clientId);
 void *runner(void *vargp);
 Cliente *client_list;
+Banker banker;
 
 int main(int argc, char *argv[])
 {
@@ -59,9 +64,8 @@ int main(int argc, char *argv[])
     //START DECLARATIONS
     const int TIME_OF_EXECUTION = atoi(argv[argc - 1]);
     const int NUMBER_OF_RESOURCES = (argc - 2);
-    Banker banker;
-    int num_threads;
 
+    int num_threads;
     //END DECLARATIONS
 
     //START INITIATION OF BANKER STRUCTURE
@@ -120,12 +124,38 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+int askForResource(int clientId)
+{
+    // TODO: Add mutex handler
+    int status = RESOURCE_ALOCATED; // TODO: Get this status from the banker function
+    return status;
+}
+
 void *runner(void *vargp)
 {
     int arg = (int)vargp;
     Cliente selfClient = client_list[arg];
-    sleep(3);
     debugHigh("thread id: %d - client-id: %d\n", selfClient.id, arg);
+    // Dome por um periodo de tempo
+    sleep(selfClient.num_ciclos_req);
+    debugHigh("Thread %d woke up\n", selfClient.id);
+
+    // Ask for resource
+    int status = askForResource(selfClient.id);
+
+    switch (status)
+    {
+    case DEADLOCK:
+        debugMedium("Deadlock at thread %d\n", selfClient.id);
+        break;
+    case NO_RESOURCES:
+        debugMedium("No resources available at thread %d\n", selfClient.id);
+        break;
+    case RESOURCE_ALOCATED:
+        debugMedium("Resource alocated with sucess at thread %d\n", selfClient.id);
+        break;
+    }
+
     pthread_exit(NULL);
 }
 
