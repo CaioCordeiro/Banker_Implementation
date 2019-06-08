@@ -51,6 +51,7 @@ int askForResource(int clientId);
 void *runner(void *vargp);
 Cliente *client_list;
 Banker banker;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char *argv[])
 {
@@ -126,7 +127,7 @@ int main(int argc, char *argv[])
 
 int askForResource(int clientId)
 {
-    // TODO: Add mutex handler
+    // DONE(OUTSIDE FUNCTION): Add mutex handler
     int status = RESOURCE_ALOCATED; // TODO: Get this status from the banker function
     return status;
 }
@@ -139,10 +140,16 @@ void *runner(void *vargp)
     // Dome por um periodo de tempo
     sleep(selfClient.num_ciclos_req);
     debugHigh("Thread %d woke up\n", selfClient.id);
+    //Essa área do código acessa uma váriavel global que outras thrads também vão acessar, tornando-a uma seção critica
+    //Para isso é aplicado um multex aqui, para evitar condição de corrida
 
+    //=============//START SEÇÃO CRITICA//==============
+    pthread_mutex_lock(&mutex);// Thread da lock no mutex para alterar as variaveis
     // Ask for resource
     int status = askForResource(selfClient.id);
 
+    pthread_mutex_unlock(&mutex);// Thread libera o mutex para a proxima thread
+     //=============//END SEÇÃO CRITICA//==============
     switch (status)
     {
     case DEADLOCK:
