@@ -208,7 +208,12 @@ void bankerAlgorithm(Cliente* client_list, Banker banker)
         {
             printf("The system is in an unsafe state.");
             break;
+        } else
+        {
+            printf("The system is in a safe state.");
+            break;
         }
+        
         
     }
 
