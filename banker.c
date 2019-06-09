@@ -39,6 +39,8 @@ typedef struct
 {
     int *max_values;  //valor maximos dos valores do banco
     int *live_values; // valores atuais do banco
+    int num_threads; // número de threads
+    int NUMBER_OF_RESOURCES;
 } Banker;
 
 // int request_resources(int customer_num, int request[]);
@@ -49,10 +51,11 @@ void debugHigh(const char *format, ...);
 void debugMedium(const char *format, ...);
 void debugLow(const char *format, ...);
 int askForResource(int clientId);
-void *runner(void *vargp, int num_threads, const int NUMBER_OF_RESOURCES);
-void bankerAlgorithm(Cliente* client_list, Banker banker, int num_threads, const int NUMBER_OF_RESOURCES);
+void *runner(void *vargp);
+void bankerAlgorithm(Cliente* client_list, Banker banker);
 Cliente *client_list;
 Banker banker;
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char *argv[])
@@ -66,14 +69,12 @@ int main(int argc, char *argv[])
 
     //START DECLARATIONS
     const int TIME_OF_EXECUTION = atoi(argv[argc - 1]);
-    const int NUMBER_OF_RESOURCES = (argc - 2);
-
-    int num_threads;
+    banker.NUMBER_OF_RESOURCES = (argc - 2);
     //END DECLARATIONS
 
     //START INITIATION OF BANKER STRUCTURE
-    banker.max_values = malloc(sizeof(int) * NUMBER_OF_RESOURCES);
-    banker.live_values = malloc(sizeof(int) * NUMBER_OF_RESOURCES);
+    banker.max_values = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
+    banker.live_values = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
     debugMedium("\nTIME_OF_EXECUTION => %d\n", TIME_OF_EXECUTION);
 
     for (int i = 1; i < argc - 1; i++)
@@ -85,21 +86,21 @@ int main(int argc, char *argv[])
     //END INITIATION OF BANKER STRUCTURE
     //START READ FILE
 
-    scanf("%d", &num_threads); //pegar numeros de threads
-    debugMedium("num_threads => %d\n", num_threads);
-    client_list = malloc(sizeof(Cliente) * num_threads);
+    scanf("%d", &banker.num_threads); //pegar numeros de threads
+    debugMedium("num_threads => %d\n", banker.num_threads);
+    client_list = malloc(sizeof(Cliente) * banker.num_threads);
 
-    for (int thread = 0; thread < num_threads; thread++)
+    for (int thread = 0; thread < banker.num_threads; thread++)
     {
-        client_list[thread].valor_max = malloc(sizeof(int) * NUMBER_OF_RESOURCES);
-        client_list[thread].allocated = malloc(sizeof(int) * NUMBER_OF_RESOURCES);
-        client_list[thread].needs = malloc(sizeof(int) * NUMBER_OF_RESOURCES);
+        client_list[thread].valor_max = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
+        client_list[thread].allocated = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
+        client_list[thread].needs = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
         client_list[thread].num_ciclos_req = rand() % MAX_SLEEP + 1;
         client_list[thread].id = thread;
         debugMedium("\n**** Thread Number %d****\n", thread);
         debugMedium("num_ciclos_req => %d \n", client_list[thread].num_ciclos_req);
 
-        for (int res = 0; res < NUMBER_OF_RESOURCES; res++)
+        for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
         {
             int value;
             value = scanf("%d", &value);
@@ -112,14 +113,14 @@ int main(int argc, char *argv[])
     }
 
     // Starting thread
-    pthread_t tid[num_threads];
+    pthread_t tid[banker.num_threads];
 
-    for (int thread = 0; thread < num_threads; thread++)
+    for (int thread = 0; thread < banker.num_threads; thread++)
     {
         pthread_create(&tid[thread], NULL, runner, (void *)thread);
     }
 
-    for (int thread = 0; thread < num_threads; thread++)
+    for (int thread = 0; thread < banker.num_threads; thread++)
     {
         pthread_join(tid[thread], NULL);
     }
@@ -134,7 +135,7 @@ int askForResource(int clientId)
     return status;
 }
 
-void *runner(void *vargp, int num_threads, const int NUMBER_OF_RESOURCES)
+void *runner(void *vargp)
 {
     int arg = (int)vargp;
     Cliente selfClient = client_list[arg];
@@ -152,11 +153,12 @@ void *runner(void *vargp, int num_threads, const int NUMBER_OF_RESOURCES)
 
     pthread_mutex_unlock(&mutex);// Thread libera o mutex para a proxima thread
      //=============//END SEÇÃO CRITICA//==============
+    bankerAlgorithm(client_list, banker);
+
     switch (status)
     {
     case DEADLOCK:
         debugMedium("Deadlock at thread %d\n", selfClient.id);
-        bankerAlgorithm(client_list, banker, num_threads, NUMBER_OF_RESOURCES);
         break;
     case NO_RESOURCES:
         debugMedium("No resources available at thread %d\n", selfClient.id);
@@ -169,19 +171,19 @@ void *runner(void *vargp, int num_threads, const int NUMBER_OF_RESOURCES)
     pthread_exit(NULL);
 }
 
-void bankerAlgorithm(Cliente* client_list, Banker banker, int num_threads, const int NUMBER_OF_RESOURCES)
+void bankerAlgorithm(Cliente* client_list, Banker banker)
 {
     bool* finish;
 
-    for (int thread = 0; thread < num_threads; thread++)
+    for (int thread = 0; thread < banker.num_threads; thread++)
     {
         finish[thread] = true;
     }
 
     // Verificação se o estado do sistema está safe ou não
-    for (int thread = 0; thread < num_threads; thread++)
+    for (int thread = 0; thread < banker.num_threads; thread++)
     {
-        for (int res = 0; res < NUMBER_OF_RESOURCES; res++)
+        for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
         {
             if (client_list[thread].allocated[res] <= client_list[thread].needs[res])
             {
