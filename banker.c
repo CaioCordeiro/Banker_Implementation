@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
         for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
         {
             int value;
-            value = scanf("%d", &value);
+            scanf("%d", &value);
             client_list[thread].valor_max[res] = value;
             client_list[thread].allocated[res] = 0;
             client_list[thread].needs[res] = rand() % value + 1;
@@ -177,7 +177,7 @@ int bankerAlgorithm(int clientID)
 
     finish = malloc(sizeof(bool) * banker.num_threads);
 
-    debugHigh("Called banker with num threads %d\n", banker.num_threads);
+    debugHigh("Thread %d called banker\n", clientID);
     for (int thread = 0; thread < banker.num_threads; thread++)
     {
         finish[thread] = true;
@@ -206,16 +206,16 @@ int bankerAlgorithm(int clientID)
         }
     }
 
-        if (finish[clientID] == false)
-        {
-            printf("The system is in an unsafe state.\n");
-            return DEADLOCK;
-        }
-        else
-        {
-            printf("The system is in a safe state.\n");
-            return RESOURCE_ALLOCATED;
-        }
+    if (finish[clientID] == false)
+    {
+        printf("The system is in an unsafe state.\n");
+        return DEADLOCK;
+    }
+    else
+    {
+        printf("The system is in a safe state.\n");
+        return RESOURCE_ALLOCATED;
+    }
 
     free(finish);
 }
