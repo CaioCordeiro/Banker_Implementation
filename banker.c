@@ -209,7 +209,7 @@ int bankerAlgorithm(int clientID)
     if (finish[clientID] == false)
     {
         printf("The system is in an unsafe state.\n");
-        return DEADLOCK;
+        return NO_RESOURCES;
     }
     else
     {
