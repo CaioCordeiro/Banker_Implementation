@@ -196,13 +196,13 @@ int bankerAlgorithm(int clientID)
             }
             else
             {
-                finish[clientID] = false;
+                printf("Error: Request exceeded maximum claim.\n");
+                return NO_RESOURCES;
             }
         }
         else
         {
-            printf("Error: Request exceeded maximum claim.\n");
-            return NO_RESOURCES;
+            finish[clientID] = false;
         }
     }
 
