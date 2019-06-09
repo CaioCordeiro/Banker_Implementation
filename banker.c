@@ -18,7 +18,7 @@
 
 #define DEADLOCK -1
 #define NO_RESOURCES 0
-#define RESOURCE_ALOCATED 1
+#define RESOURCE_ALLOCATED 1
 
 typedef struct
 {
@@ -52,7 +52,7 @@ void debugMedium(const char *format, ...);
 void debugLow(const char *format, ...);
 int askForResource(int clientId);
 void *runner(void *vargp);
-void bankerAlgorithm(Cliente* client_list, Banker banker);
+int bankerAlgorithm(Cliente* client_list, Banker banker);
 Cliente *client_list;
 Banker banker;
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 int askForResource(int clientId)
 {
     // DONE(OUTSIDE FUNCTION): Add mutex handler
-    int status = RESOURCE_ALOCATED; // TODO: Get this status from the banker function
+    int status = bankerAlgorithm(client_list, banker); // TODO: Get this status from the banker function
     return status;
 }
 
@@ -153,8 +153,7 @@ void *runner(void *vargp)
 
     pthread_mutex_unlock(&mutex);// Thread libera o mutex para a proxima thread
      //=============//END SEÇÃO CRITICA//==============
-    bankerAlgorithm(client_list, banker);
-
+    
     switch (status)
     {
     case DEADLOCK:
@@ -163,7 +162,7 @@ void *runner(void *vargp)
     case NO_RESOURCES:
         debugMedium("No resources available at thread %d\n", selfClient.id);
         break;
-    case RESOURCE_ALOCATED:
+    case RESOURCE_ALLOCATED:
         debugMedium("Resource alocated with sucess at thread %d\n", selfClient.id);
         break;
     }
@@ -171,7 +170,7 @@ void *runner(void *vargp)
     pthread_exit(NULL);
 }
 
-void bankerAlgorithm(Cliente* client_list, Banker banker)
+int bankerAlgorithm(Cliente* client_list, Banker banker)
 {
     bool* finish;
 
@@ -200,18 +199,18 @@ void bankerAlgorithm(Cliente* client_list, Banker banker)
             } else
             {
                 printf("Error: Request exceeded maximum claim.");
-                break;
+                return NO_RESOURCES;
             }
         }
 
         if (finish[thread] == false)
         {
             printf("The system is in an unsafe state.");
-            break;
+            return DEADLOCK;
         } else
         {
             printf("The system is in a safe state.");
-            break;
+            return RESOURCE_ALLOCATED;
         }
         
         
