@@ -52,7 +52,7 @@ void debugMedium(const char *format, ...);
 void debugLow(const char *format, ...);
 int askForResource(int clientId);
 void *runner(void *vargp);
-int bankerAlgorithm();
+int bankerAlgorithm(int clientId);
 Cliente *client_list;
 Banker banker;
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 int askForResource(int clientId)
 {
     // DONE(OUTSIDE FUNCTION): Add mutex handler
-    int status = bankerAlgorithm(); // TODO: Get this status from the banker function
+    int status = bankerAlgorithm(clientId); // TODO: Get this status from the banker function
     return status;
 }
 
@@ -171,7 +171,7 @@ void *runner(void *vargp)
     pthread_exit(NULL);
 }
 
-int bankerAlgorithm()
+int bankerAlgorithm(int clientID)
 {
     bool *finish;
 
@@ -184,41 +184,39 @@ int bankerAlgorithm()
     }
 
     // Verificação se o estado do sistema está safe ou não
-    for (int thread = 0; thread < banker.num_threads; thread++)
+    for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
     {
-        for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
+        if (client_list[clientID].allocated[res] <= client_list[clientID].needs[res])
         {
-            if (client_list[thread].allocated[res] <= client_list[thread].needs[res])
+            if (client_list[clientID].allocated[res] <= banker.live_values)
             {
-                if (client_list[thread].allocated[res] <= banker.live_values)
-                {
-                    banker.live_values -= client_list[thread].allocated[res];
-                    client_list[thread].allocated[res] += client_list[thread].needs[res];
-                    client_list[thread].needs[res] -= client_list[thread].allocated[res];
-                }
-                else
-                {
-                    finish[thread] = false;
-                }
+                banker.live_values -= client_list[clientID].allocated[res];
+                client_list[clientID].allocated[res] += client_list[clientID].needs[res];
+                client_list[clientID].needs[res] -= client_list[clientID].allocated[res];
             }
             else
             {
-                printf("Error: Request exceeded maximum claim.");
-                return NO_RESOURCES;
+                finish[clientID] = false;
             }
         }
-
-        if (finish[thread] == false)
+        else
         {
-            printf("The system is in an unsafe state.");
+            printf("Error: Request exceeded maximum claim.\n");
+            return NO_RESOURCES;
+        }
+    }
+
+        if (finish[clientID] == false)
+        {
+            printf("The system is in an unsafe state.\n");
             return DEADLOCK;
         }
         else
         {
-            printf("The system is in a safe state.");
+            printf("The system is in a safe state.\n");
             return RESOURCE_ALLOCATED;
         }
-    }
+
     free(finish);
 }
 
