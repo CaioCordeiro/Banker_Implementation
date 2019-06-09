@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <stdarg.h>
 #include <pthread.h>
@@ -48,7 +49,8 @@ void debugHigh(const char *format, ...);
 void debugMedium(const char *format, ...);
 void debugLow(const char *format, ...);
 int askForResource(int clientId);
-void *runner(void *vargp);
+void *runner(void *vargp, int num_threads, const int NUMBER_OF_RESOURCES);
+void bankerAlgorithm(Cliente* client_list, Banker banker, int num_threads, const int NUMBER_OF_RESOURCES);
 Cliente *client_list;
 Banker banker;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -132,7 +134,7 @@ int askForResource(int clientId)
     return status;
 }
 
-void *runner(void *vargp)
+void *runner(void *vargp, int num_threads, const int NUMBER_OF_RESOURCES)
 {
     int arg = (int)vargp;
     Cliente selfClient = client_list[arg];
@@ -154,6 +156,7 @@ void *runner(void *vargp)
     {
     case DEADLOCK:
         debugMedium("Deadlock at thread %d\n", selfClient.id);
+        bankerAlgorithm(client_list, banker, num_threads, NUMBER_OF_RESOURCES);
         break;
     case NO_RESOURCES:
         debugMedium("No resources available at thread %d\n", selfClient.id);
@@ -164,6 +167,50 @@ void *runner(void *vargp)
     }
 
     pthread_exit(NULL);
+}
+
+void bankerAlgorithm(Cliente* client_list, Banker banker, int num_threads, const int NUMBER_OF_RESOURCES)
+{
+    bool* finish;
+
+    for (int thread = 0; thread < num_threads; thread++)
+    {
+        finish[thread] = true;
+    }
+
+    // Verificação se o estado do sistema está safe ou não
+    for (int thread = 0; thread < num_threads; thread++)
+    {
+        for (int res = 0; res < NUMBER_OF_RESOURCES; res++)
+        {
+            if (client_list[thread].allocated[res] <= client_list[thread].needs[res])
+            {
+                if (client_list[thread].allocated[res] <= banker.live_values)
+                {
+                    banker.live_values -= client_list[thread].allocated[res];
+                    client_list[thread].allocated[res] += client_list[thread].needs[res];
+                    client_list[thread].needs[res] -= client_list[thread].allocated[res]; 
+                } else
+                {
+                    finish[thread] = false;
+                }
+                
+            } else
+            {
+                printf("Error: Request exceeded maximum claim.");
+                break;
+            }
+        }
+
+        if (finish[thread] == false)
+        {
+            printf("The system is in an unsafe state.");
+            break;
+        }
+        
+    }
+
+
 }
 
 void debugHigh(const char *format, ...)
