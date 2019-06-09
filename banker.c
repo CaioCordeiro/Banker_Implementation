@@ -39,7 +39,7 @@ typedef struct
 {
     int *max_values;  //valor maximos dos valores do banco
     int *live_values; // valores atuais do banco
-    int num_threads; // número de threads
+    int num_threads;  // número de threads
     int NUMBER_OF_RESOURCES;
 } Banker;
 
@@ -52,7 +52,7 @@ void debugMedium(const char *format, ...);
 void debugLow(const char *format, ...);
 int askForResource(int clientId);
 void *runner(void *vargp);
-int bankerAlgorithm(Cliente* client_list, Banker banker);
+int bankerAlgorithm();
 Cliente *client_list;
 Banker banker;
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 int askForResource(int clientId)
 {
     // DONE(OUTSIDE FUNCTION): Add mutex handler
-    int status = bankerAlgorithm(client_list, banker); // TODO: Get this status from the banker function
+    int status = bankerAlgorithm(); // TODO: Get this status from the banker function
     return status;
 }
 
@@ -147,13 +147,14 @@ void *runner(void *vargp)
     //Para isso é aplicado um multex aqui, para evitar condição de corrida
 
     //=============//START SEÇÃO CRITICA//==============
-    pthread_mutex_lock(&mutex);// Thread da lock no mutex para alterar as variaveis
+    pthread_mutex_lock(&mutex); // Thread da lock no mutex para alterar as variaveis
     // Ask for resource
+    debugHigh("thread %d Asked resource\n", selfClient.id);
     int status = askForResource(selfClient.id);
+    debugHigh("thread %d banker status %d\n", selfClient.id, status);
+    pthread_mutex_unlock(&mutex); // Thread libera o mutex para a proxima thread
+                                  //=============//END SEÇÃO CRITICA//==============
 
-    pthread_mutex_unlock(&mutex);// Thread libera o mutex para a proxima thread
-     //=============//END SEÇÃO CRITICA//==============
-    
     switch (status)
     {
     case DEADLOCK:
@@ -170,10 +171,13 @@ void *runner(void *vargp)
     pthread_exit(NULL);
 }
 
-int bankerAlgorithm(Cliente* client_list, Banker banker)
+int bankerAlgorithm()
 {
-    bool* finish;
+    bool *finish;
 
+    finish = malloc(sizeof(bool) * banker.num_threads);
+
+    debugHigh("Called banker with num threads %d\n", banker.num_threads);
     for (int thread = 0; thread < banker.num_threads; thread++)
     {
         finish[thread] = true;
@@ -190,13 +194,14 @@ int bankerAlgorithm(Cliente* client_list, Banker banker)
                 {
                     banker.live_values -= client_list[thread].allocated[res];
                     client_list[thread].allocated[res] += client_list[thread].needs[res];
-                    client_list[thread].needs[res] -= client_list[thread].allocated[res]; 
-                } else
+                    client_list[thread].needs[res] -= client_list[thread].allocated[res];
+                }
+                else
                 {
                     finish[thread] = false;
                 }
-                
-            } else
+            }
+            else
             {
                 printf("Error: Request exceeded maximum claim.");
                 return NO_RESOURCES;
@@ -207,16 +212,14 @@ int bankerAlgorithm(Cliente* client_list, Banker banker)
         {
             printf("The system is in an unsafe state.");
             return DEADLOCK;
-        } else
+        }
+        else
         {
             printf("The system is in a safe state.");
             return RESOURCE_ALLOCATED;
         }
-        
-        
     }
-
-
+    free(finish);
 }
 
 void debugHigh(const char *format, ...)
