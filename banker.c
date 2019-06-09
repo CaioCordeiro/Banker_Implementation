@@ -188,11 +188,11 @@ int bankerAlgorithm(int clientID)
     {
         if (client_list[clientID].allocated[res] <= client_list[clientID].needs[res])
         {
-            if (client_list[clientID].allocated[res] <= banker.live_values)
+            if (client_list[clientID].allocated[res] <= banker.live_values[res])
             {
-                banker.live_values -= client_list[clientID].allocated[res];
                 client_list[clientID].allocated[res] += client_list[clientID].needs[res];
                 client_list[clientID].needs[res] -= client_list[clientID].allocated[res];
+                banker.live_values[res] -= client_list[clientID].allocated[res];
             }
             else
             {
