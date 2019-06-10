@@ -14,7 +14,7 @@
 #define LOW 1
 #define MEDIUM 2
 #define HIGH 3
-#define DEBUG_LEVEL HIGH
+#define DEBUG_LEVEL LOW
 
 #define DEADLOCK -1
 #define NO_RESOURCES 0
@@ -134,6 +134,13 @@ int main(int argc, char *argv[])
 int askForResource(int clientId)
 {
     // DONE(OUTSIDE FUNCTION): Add mutex handler
+    debugLow("Thread %d requested: ", clientId);
+    Cliente selfClient = client_list[clientId];
+    for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
+    {
+        debugLow(" %d ", selfClient.needs[res]);
+    }
+    debugLow("\n");
     int status = bankerAlgorithm(clientId); // TODO: Get this status from the banker function
     return status;
 }
@@ -169,10 +176,10 @@ void *runner(void *vargp)
             switch (status)
             {
             case DEADLOCK:
-                debugMedium("Deadlock at thread %d\n", selfClient.id);
+                debugLow("Deadlock at thread %d\n", selfClient.id);
                 break;
             case NO_RESOURCES:
-                debugMedium("No resources available at thread %d\n", selfClient.id);
+                debugLow("No resources available at thread %d\n", selfClient.id);
                 break;
             case RESOURCE_ALLOCATED:
                 if (!should_release)
@@ -182,10 +189,10 @@ void *runner(void *vargp)
 
                 should_release = 1;
                 start_release_time = time(NULL);
-                debugMedium("Resource alocated with sucess at thread %d and release time %d\n", selfClient.id, keep_time);
+                start_sleep_time = time(NULL);
+                debugLow("Resource alocated with sucess at thread %d and release time %d\n", selfClient.id, keep_time);
                 break;
             }
-            start_sleep_time = time(NULL);
             selfClient.num_ciclos_req = rand() % (MAX_SLEEP + 1);
             for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
             {
@@ -197,7 +204,7 @@ void *runner(void *vargp)
         // Release do recurso
         if (should_release && !isWaiting(start_release_time, keep_time))
         {
-            debugMedium("Thread %d releasing resources\n", selfClient.id);
+            debugLow("Thread %d releasing resources\n", selfClient.id);
             pthread_mutex_lock(&mutex);
             for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
             {
@@ -252,19 +259,19 @@ int bankerAlgorithm(int clientID)
         }
         else
         {
-            printf("Error: Request exceeded maximum claim.\n");
+            debugLow("Error: Request exceeded maximum claim.\n");
             return NO_RESOURCES;
         }
     }
 
     if (finish[clientID] == false)
     {
-        printf("The system is in an unsafe state.\n");
+        debugLow("The system is in an unsafe state.\n");
         return DEADLOCK;
     }
     else
     {
-        printf("The system is in a safe state.\n");
+        debugLow("The system is in a safe state.\n");
         return RESOURCE_ALLOCATED;
     }
 
