@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #define MAX_SLEEP 10    // numero maximo de ciclos dormindo
-#define MAX_KEEP_TIME 5 // tempo máximo que o cliente vai levar para resolver o recurso
+#define MAX_KEEP_TIME 8 // tempo máximo que o cliente vai levar para resolver o recurso
 
 #define NO_DEBUG 0
 #define LOW 1
@@ -196,7 +196,7 @@ void *runner(void *vargp)
             selfClient.num_ciclos_req = rand() % (MAX_SLEEP + 1);
             for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
             {
-                selfClient.needs[res] = selfClient.allocated[res] + (rand() % (selfClient.valor_max[res] + 1));
+                selfClient.needs[res] = (rand() % (selfClient.valor_max[res] + 1 + selfClient.allocated[res]));
                 debugHigh("Resorted needs Value valor_max[%d] => %d | needs[%d] => %d \n", res, selfClient.valor_max[res], res, selfClient.needs[res]);
             }
         }
@@ -204,7 +204,6 @@ void *runner(void *vargp)
         // Release do recurso
         if (should_release && !isWaiting(start_release_time, keep_time))
         {
-            debugLow("Thread %d releasing resources\n", selfClient.id);
             pthread_mutex_lock(&mutex);
             for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
             {
@@ -212,6 +211,7 @@ void *runner(void *vargp)
                 selfClient.allocated[res] += 0;
             }
             should_release = 0;
+            debugLow("Thread %d releasing resources\n", selfClient.id);
             pthread_mutex_unlock(&mutex);
         }
         actual_time = time(NULL);
@@ -240,31 +240,38 @@ int bankerAlgorithm(int clientID)
     debugHigh("Thread %d called banker\n", clientID);
 
     finish[clientID] = true;
+    bool isSfafe = true;
 
-    // Verificação se o estado do sistema está safe ou não
+    // safe algorithm
     for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
     {
-        if (client_list[clientID].allocated[res] <= client_list[clientID].needs[res])
+        if (client_list[clientID].needs[res] > banker.live_values[res]) // 0 11
         {
-            if (client_list[clientID].allocated[res] <= banker.live_values[res])
-            {
-                client_list[clientID].allocated[res] += client_list[clientID].needs[res];
-                client_list[clientID].needs[res] -= client_list[clientID].allocated[res];
-                banker.live_values[res] -= client_list[clientID].allocated[res];
-            }
-            else
-            {
-                finish[clientID] = false;
-            }
-        }
-        else
-        {
-            debugLow("Error: Request exceeded maximum claim.\n");
-            return NO_RESOURCES;
+            debugMedium("Resource unnavailable %d asked %d has %d\n", res, client_list[clientID].needs[res], banker.live_values[res]);
+            isSfafe = false;
         }
     }
 
-    if (finish[clientID] == false)
+    // Verificação se o estado do sistema está safe ou não
+    if (isSfafe)
+    {
+        for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
+        {
+            if (client_list[clientID].allocated[res] < client_list[clientID].needs[res]) // 0 12
+            {
+                client_list[clientID].allocated[res] += client_list[clientID].needs[res];
+                banker.live_values[res] -= client_list[clientID].needs[res];
+                client_list[clientID].needs[res] = 0;
+            }
+            else
+            {
+                debugLow("Error: Request exceeded maximum claim.\n");
+                return NO_RESOURCES;
+            }
+        }
+    }
+
+    if (isSfafe == false)
     {
         debugLow("The system is in an unsafe state.\n");
         return DEADLOCK;
