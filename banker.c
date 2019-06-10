@@ -7,8 +7,8 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#define MAX_SLEEP 10  // numero maximo de ciclos dormindo
-#define MAX_RELEASE 2 // tempo máximo que o cliente vai levar para resolver o recurso
+#define MAX_SLEEP 10    // numero maximo de ciclos dormindo
+#define MAX_KEEP_TIME 5 // tempo máximo que o cliente vai levar para resolver o recurso
 
 #define NO_DEBUG 0
 #define LOW 1
@@ -41,6 +41,7 @@ typedef struct
     int *live_values; // valores atuais do banco
     int num_threads;  // número de threads
     int NUMBER_OF_RESOURCES;
+    int time_of_execution;
 } Banker;
 
 // int request_resources(int customer_num, int request[]);
@@ -53,6 +54,7 @@ void debugLow(const char *format, ...);
 int askForResource(int clientId);
 void *runner(void *vargp);
 int bankerAlgorithm(int clientId);
+int isWaiting(time_t start_sleep_time, int sleep_duration);
 Cliente *client_list;
 Banker banker;
 
@@ -75,6 +77,7 @@ int main(int argc, char *argv[])
     //START INITIATION OF BANKER STRUCTURE
     banker.max_values = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
     banker.live_values = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
+    banker.time_of_execution = TIME_OF_EXECUTION;
     debugMedium("\nTIME_OF_EXECUTION => %d\n", TIME_OF_EXECUTION);
 
     for (int i = 1; i < argc - 1; i++)
@@ -95,7 +98,7 @@ int main(int argc, char *argv[])
         client_list[thread].valor_max = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
         client_list[thread].allocated = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
         client_list[thread].needs = malloc(sizeof(int) * banker.NUMBER_OF_RESOURCES);
-        client_list[thread].num_ciclos_req = rand() % MAX_SLEEP + 1;
+        client_list[thread].num_ciclos_req = rand() % (MAX_SLEEP + 1);
         client_list[thread].id = thread;
         debugMedium("\n**** Thread Number %d****\n", thread);
         debugMedium("num_ciclos_req => %d \n", client_list[thread].num_ciclos_req);
@@ -140,35 +143,85 @@ void *runner(void *vargp)
     int arg = (int)vargp;
     Cliente selfClient = client_list[arg];
     debugHigh("thread id: %d - client-id: %d\n", selfClient.id, arg);
-    // Dome por um periodo de tempo
-    sleep(selfClient.num_ciclos_req);
-    debugHigh("Thread %d woke up\n", selfClient.id);
-    //Essa área do código acessa uma váriavel global que outras thrads também vão acessar, tornando-a uma seção critica
-    //Para isso é aplicado um multex aqui, para evitar condição de corrida
-
-    //=============//START SEÇÃO CRITICA//==============
-    pthread_mutex_lock(&mutex); // Thread da lock no mutex para alterar as variaveis
-    // Ask for resource
-    debugHigh("thread %d Asked resource\n", selfClient.id);
-    int status = askForResource(selfClient.id);
-    debugHigh("thread %d banker status %d\n", selfClient.id, status);
-    pthread_mutex_unlock(&mutex); // Thread libera o mutex para a proxima thread
-                                  //=============//END SEÇÃO CRITICA//==============
-
-    switch (status)
+    time_t start_time, actual_time, start_sleep_time, start_release_time;
+    start_time = time(NULL);
+    actual_time = start_sleep_time = start_time;
+    int should_release = 0;
+    int keep_time;
+    while (actual_time - start_time < banker.time_of_execution)
     {
-    case DEADLOCK:
-        debugMedium("Deadlock at thread %d\n", selfClient.id);
-        break;
-    case NO_RESOURCES:
-        debugMedium("No resources available at thread %d\n", selfClient.id);
-        break;
-    case RESOURCE_ALLOCATED:
-        debugMedium("Resource alocated with sucess at thread %d\n", selfClient.id);
-        break;
-    }
+        // Dome por um periodo de tempo
+        if (!isWaiting(start_sleep_time, selfClient.num_ciclos_req))
+        {
+            debugHigh("Thread %d woke up\n", selfClient.id);
+            //Essa área do código acessa uma váriavel global que outras thrads também vão acessar, tornando-a uma seção critica
+            //Para isso é aplicado um multex aqui, para evitar condição de corrida
 
+            //=============//START SEÇÃO CRITICA//==============
+            pthread_mutex_lock(&mutex); // Thread da lock no mutex para alterar as variaveis
+            // Ask for resource
+            debugHigh("thread %d Asked resource\n", selfClient.id);
+            int status = askForResource(selfClient.id);
+            debugHigh("thread %d banker status %d\n", selfClient.id, status);
+            pthread_mutex_unlock(&mutex); // Thread libera o mutex para a proxima thread
+            //=============//END SEÇÃO CRITICA//==============
+
+            switch (status)
+            {
+            case DEADLOCK:
+                debugMedium("Deadlock at thread %d\n", selfClient.id);
+                break;
+            case NO_RESOURCES:
+                debugMedium("No resources available at thread %d\n", selfClient.id);
+                break;
+            case RESOURCE_ALLOCATED:
+                if (!should_release)
+                {
+                    keep_time = rand() % (MAX_KEEP_TIME + 1);
+                }
+
+                should_release = 1;
+                start_release_time = time(NULL);
+                debugMedium("Resource alocated with sucess at thread %d and release time %d\n", selfClient.id, keep_time);
+                break;
+            }
+            start_sleep_time = time(NULL);
+            selfClient.num_ciclos_req = rand() % (MAX_SLEEP + 1);
+            for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
+            {
+                selfClient.needs[res] = selfClient.allocated[res] + (rand() % (selfClient.valor_max[res] + 1));
+                debugHigh("Resorted needs Value valor_max[%d] => %d | needs[%d] => %d \n", res, selfClient.valor_max[res], res, selfClient.needs[res]);
+            }
+        }
+
+        // Release do recurso
+        if (should_release && !isWaiting(start_release_time, keep_time))
+        {
+            debugMedium("Thread %d releasing resources\n", selfClient.id);
+            pthread_mutex_lock(&mutex);
+            for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
+            {
+                banker.live_values[res] += selfClient.allocated[res];
+                selfClient.allocated[res] += 0;
+            }
+            should_release = 0;
+            pthread_mutex_unlock(&mutex);
+        }
+        actual_time = time(NULL);
+    }
     pthread_exit(NULL);
+}
+
+int isWaiting(time_t start_sleep_time, int sleep_duration)
+{
+    if (time(NULL) - start_sleep_time > sleep_duration)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
 }
 
 int bankerAlgorithm(int clientID)
@@ -178,10 +231,8 @@ int bankerAlgorithm(int clientID)
     finish = malloc(sizeof(bool) * banker.num_threads);
 
     debugHigh("Thread %d called banker\n", clientID);
-    for (int thread = 0; thread < banker.num_threads; thread++)
-    {
-        finish[thread] = true;
-    }
+
+    finish[clientID] = true;
 
     // Verificação se o estado do sistema está safe ou não
     for (int res = 0; res < banker.NUMBER_OF_RESOURCES; res++)
